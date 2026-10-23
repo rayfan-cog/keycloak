@@ -92,7 +92,7 @@ var Resources = {
                 msg = "<p>This resource is referenced in some permissions:</p>";
                 msg += "<ul>";
                 for (i = 0; i < permissions.length; i++) {
-                    msg+= "<li><strong>" + permissions[i].name + "</strong></li>";
+                    msg+= "<li><strong>" + AuthzDialog.escapeHtml(permissions[i].name) + "</strong></li>";
                 }
                 msg += "</ul>";
                 msg += "<p>If you remove this resource, the permissions above will be affected and will not be associated with this resource anymore.</p>";
@@ -122,7 +122,7 @@ var Policies = {
                 msg = "<p>This policy is being used by other policies:</p>";
                 msg += "<ul>";
                 for (i = 0; i < dependentPolicies.length; i++) {
-                    msg+= "<li><strong>" + dependentPolicies[i].name + "</strong></li>";
+                    msg+= "<li><strong>" + AuthzDialog.escapeHtml(dependentPolicies[i].name) + "</strong></li>";
                 }
                 msg += "</ul>";
                 msg += "<p>If you remove this policy, the policies above will be affected and will not be associated with this policy anymore.</p>";
@@ -462,7 +462,7 @@ var Scopes = {
                 msg = "<p>This scope is referenced in some permissions:</p>";
                 msg += "<ul>";
                 for (i = 0; i < permissions.length; i++) {
-                    msg+= "<li><strong>" + permissions[i].name + "</strong></li>";
+                    msg+= "<li><strong>" + AuthzDialog.escapeHtml(permissions[i].name) + "</strong></li>";
                 }
                 msg += "</ul>";
                 msg += "<p>If you remove this scope, the permissions above will be affected and will not be associated with this scope anymore.</p>";

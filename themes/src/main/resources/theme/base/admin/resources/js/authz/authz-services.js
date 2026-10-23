@@ -78,6 +78,14 @@ module.factory('PolicyProvider', function($resource) {
 module.service('AuthzDialog', function($modal) {
     var dialog = {};
 
+    var escapeHtml = function(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    };
+
+    dialog.escapeHtml = escapeHtml;
+
     var openDialog = function(title, message, btns, template) {
         var controller = function($scope, $modalInstance, $sce, title, message, btns) {
             $scope.title = title;
@@ -111,7 +119,7 @@ module.service('AuthzDialog', function($modal) {
 
     dialog.confirmDeleteWithMsg = function(name, type, msg, success) {
         var title = 'Delete ' + type;
-        msg += 'Are you sure you want to permanently delete the ' + type + ' <strong>' + name + '</strong> ?';
+        msg += 'Are you sure you want to permanently delete the ' + escapeHtml(type) + ' <strong>' + escapeHtml(name) + '</strong> ?';
         var btns = {
             ok: {
                 label: 'Delete',
@@ -128,7 +136,7 @@ module.service('AuthzDialog', function($modal) {
 
     dialog.confirmDelete = function(name, type, success) {
         var title = 'Delete ' + type;
-        var msg = 'Are you sure you want to permanently delete the ' + type + ' <strong>' + name + '</strong> ?';
+        var msg = 'Are you sure you want to permanently delete the ' + escapeHtml(type) + ' <strong>' + escapeHtml(name) + '</strong> ?';
         var btns = {
             ok: {
                 label: 'Delete',
