@@ -18,6 +18,8 @@
 package org.keycloak.authorization.protection.policy;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,6 +35,8 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.jboss.resteasy.annotations.cache.NoCache;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.keycloak.OAuthErrorException;
@@ -80,7 +84,7 @@ public class UserManagedPermissionService {
 
         checkRequest(resourceId, representation);
 
-        representation.addResource(resourceId);
+        representation.setResources(new HashSet<>(Collections.singleton(resourceId)));
         representation.setOwner(identity.getId());
 
         return findById(delegate.create(representation).getId());
@@ -99,9 +103,11 @@ public class UserManagedPermissionService {
             throw new ErrorResponseException(OAuthErrorException.INVALID_REQUEST, "Failed to parse representation", Status.BAD_REQUEST);
         }
 
-        checkRequest(getAssociatedResourceId(policyId), representation);
+        String resourceId = getAssociatedResourceId(policyId);
 
-        return PolicyTypeResourceService.class.cast(delegate.getResource(policyId)).update(payload);
+        checkRequest(resourceId, representation);
+
+        return PolicyTypeResourceService.class.cast(delegate.getResource(policyId)).update(restrictResources(payload, resourceId));
     }
 
     @Path("{policyId}")
@@ -179,6 +185,22 @@ public class UserManagedPermissionService {
                     throw new ErrorResponseException(OAuthErrorException.INVALID_REQUEST, "Script upload not supported", Status.BAD_REQUEST);
                 }
             }
+        }
+    }
+
+    private String restrictResources(String payload, String resourceId) {
+        try {
+            JsonNode node = JsonSerialization.mapper.readTree(payload);
+
+            if (!(node instanceof ObjectNode)) {
+                throw new ErrorResponseException(OAuthErrorException.INVALID_REQUEST, "Failed to parse representation", Status.BAD_REQUEST);
+            }
+
+            ((ObjectNode) node).putArray("resources").add(resourceId);
+
+            return JsonSerialization.writeValueAsString(node);
+        } catch (IOException e) {
+            throw new ErrorResponseException(OAuthErrorException.INVALID_REQUEST, "Failed to parse representation", Status.BAD_REQUEST);
         }
     }
 

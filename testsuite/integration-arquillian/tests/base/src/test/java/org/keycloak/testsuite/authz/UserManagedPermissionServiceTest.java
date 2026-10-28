@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -637,6 +638,53 @@ public class UserManagedPermissionServiceTest extends AbstractResourceServerTest
         } catch (Exception e) {
             assertTrue(HttpResponseException.class.cast(e.getCause()).toString().contains("Only resource owner can access policies for resource"));
         }
+    }
+
+    @Test
+    public void testCannotAssociatePolicyWithResourceOwnedByOtherUser() {
+        ProtectionResource protection = getAuthzClient().protection();
+
+        ResourceRepresentation martaResource = new ResourceRepresentation();
+
+        martaResource.setName(UUID.randomUUID().toString());
+        martaResource.setOwner("marta");
+        martaResource.setOwnerManagedAccess(true);
+        martaResource.addScope("Scope A");
+
+        martaResource = protection.resource().create(martaResource);
+
+        ResourceRepresentation aliceResource = new ResourceRepresentation();
+
+        aliceResource.setName(UUID.randomUUID().toString());
+        aliceResource.setOwner("alice");
+        aliceResource.setOwnerManagedAccess(true);
+        aliceResource.addScope("Scope A");
+
+        aliceResource = protection.resource().create(aliceResource);
+
+        UmaPermissionRepresentation permission = new UmaPermissionRepresentation();
+
+        permission.setName(UUID.randomUUID().toString());
+        permission.addUser("kolo");
+        permission.addResource(aliceResource.getId());
+
+        PolicyResource policy = getAuthzClient().protection("marta", "password").policy(martaResource.getId());
+
+        permission = policy.create(permission);
+
+        assertPolicyResources(permission, martaResource.getId());
+
+        permission.setResources(new HashSet<>(Arrays.asList(aliceResource.getId())));
+        policy.update(permission);
+
+        assertPolicyResources(permission, martaResource.getId());
+    }
+
+    private void assertPolicyResources(UmaPermissionRepresentation permission, String expectedResourceId) {
+        List<ResourceRepresentation> resources = getClient(getRealm()).authorization().policies().policy(permission.getId()).resources();
+
+        assertEquals(1, resources.size());
+        assertEquals(expectedResourceId, resources.get(0).getId());
     }
 
     @Test
