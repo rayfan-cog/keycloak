@@ -54,9 +54,9 @@
             </#list>
 
             <#if referrer??>
-                var referrer = '${referrer}';
-                var referrerName = '${referrerName}';
-                var referrerUri = '${referrer_uri?no_esc}';
+                var referrer = '${referrer?js_string?no_esc}';
+                var referrerName = '${referrerName?js_string?no_esc}';
+                var referrerUri = '${referrer_uri?js_string?no_esc}';
             </#if>
 
             <#if msg??>

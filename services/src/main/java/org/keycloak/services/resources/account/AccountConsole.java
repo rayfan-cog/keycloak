@@ -98,7 +98,7 @@ public class AccountConsole {
             if (referrer != null) {
                 map.put("referrer", referrer[0]);
                 map.put("referrerName", referrer[1]);
-                map.put("referrer_uri", referrer[2]);
+                map.put("referrer_uri", encodeUnsafeUriChars(referrer[2]));
             }
             
             UserModel user = null;
@@ -179,6 +179,14 @@ public class AccountConsole {
     @Path("index.html")
     public Response getIndexHtmlRedirect() {
         return Response.status(302).location(session.getContext().getUri().getRequestUriBuilder().path("../").build()).build();
+    }
+
+    private static String encodeUnsafeUriChars(String uri) {
+        return uri.replace("\\", "%5C")
+                .replace("'", "%27")
+                .replace("\"", "%22")
+                .replace("<", "%3C")
+                .replace(">", "%3E");
     }
 
     // TODO: took this code from elsewhere - refactor
