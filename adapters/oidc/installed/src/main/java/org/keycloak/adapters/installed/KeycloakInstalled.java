@@ -29,6 +29,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Deque;
@@ -56,11 +57,15 @@ import org.keycloak.adapters.ServerRequest;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier;
 import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.Base64Url;
+import org.keycloak.common.util.EnvUtil;
 import org.keycloak.common.util.KeycloakUriBuilder;
+import org.keycloak.common.util.KeystoreUtil;
 import org.keycloak.common.util.RandomString;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.IDToken;
+import org.keycloak.representations.adapters.config.AdapterConfig;
+import org.keycloak.representations.adapters.config.AdapterHttpClientConfig;
 
 import io.undertow.Handlers;
 import io.undertow.Undertow;
@@ -80,6 +85,8 @@ public class KeycloakInstalled {
     private static final String KEYCLOAK_JSON = "META-INF/keycloak.json";
 
     private KeycloakDeployment deployment;
+
+    private AdapterHttpClientConfig httpClientConfig;
 
     private enum Status {
         LOGGED_MANUAL, LOGGED_DESKTOP
@@ -110,12 +117,16 @@ public class KeycloakInstalled {
 
 
     public KeycloakInstalled() {
-        InputStream config = Thread.currentThread().getContextClassLoader().getResourceAsStream(KEYCLOAK_JSON);
-        deployment = KeycloakDeploymentBuilder.build(config);
+        this(Thread.currentThread().getContextClassLoader().getResourceAsStream(KEYCLOAK_JSON));
     }
 
     public KeycloakInstalled(InputStream config) {
-        deployment = KeycloakDeploymentBuilder.build(config);
+        this(KeycloakDeploymentBuilder.loadAdapterConfig(config));
+    }
+
+    public KeycloakInstalled(AdapterConfig adapterConfig) {
+        this.httpClientConfig = adapterConfig;
+        this.deployment = KeycloakDeploymentBuilder.build(adapterConfig);
     }
 
     public KeycloakInstalled(KeycloakDeployment deployment) {
@@ -554,11 +565,39 @@ public class KeycloakInstalled {
     }
 
     protected ResteasyClient createResteasyClient() {
-        return new ResteasyClientBuilder()
+        ResteasyClientBuilder builder = new ResteasyClientBuilder()
                 .connectionCheckoutTimeout(1, TimeUnit.HOURS)
                 .connectionTTL(1, TimeUnit.HOURS)
-                .socketTimeout(1, TimeUnit.HOURS)
-                .disableTrustManager().build();
+                .socketTimeout(1, TimeUnit.HOURS);
+        configureTls(builder);
+        return builder.build();
+    }
+
+    /**
+     * Applies the adapter's TLS settings ({@code truststore}, {@code allow-any-hostname},
+     * {@code disable-trust-manager}). Server certificates are validated against the JVM default
+     * truststore unless configured otherwise.
+     */
+    protected void configureTls(ResteasyClientBuilder builder) {
+        if (httpClientConfig == null) {
+            return;
+        }
+        if (httpClientConfig.isDisableTrustManager()) {
+            builder.disableTrustManager();
+            return;
+        }
+        String truststorePath = httpClientConfig.getTruststore();
+        if (truststorePath != null) {
+            try {
+                KeyStore truststore = KeystoreUtil.loadKeyStore(EnvUtil.replace(truststorePath), httpClientConfig.getTruststorePassword());
+                builder.trustStore(truststore);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to load truststore", e);
+            }
+        }
+        if (httpClientConfig.isAllowAnyHostname()) {
+            builder.hostnameVerification(ResteasyClientBuilder.HostnameVerificationPolicy.ANY);
+        }
     }
 
 
